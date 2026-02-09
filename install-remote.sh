@@ -60,8 +60,54 @@ if ! curl -fsSL "${REPO_BASE}/policy.yaml" -o "$POLICY_DEST"; then
     exit 1
 fi
 
-# Create or update settings.json with PreToolUse hook
-if [ ! -f "$HOOKS_FILE" ]; then
+# Check if settings.json is a symlink (likely Nix/Home Manager)
+IS_NIX_MANAGED=false
+if [ -L "$HOOKS_FILE" ]; then
+    TARGET=$(readlink "$HOOKS_FILE")
+    if [[ "$TARGET" == /nix/store/* ]]; then
+        IS_NIX_MANAGED=true
+        echo "Detected Nix-managed settings.json"
+    fi
+fi
+
+# Try to update settings.json
+if [ "$IS_NIX_MANAGED" = true ]; then
+    echo ""
+    echo "⚠️  Your settings.json is managed by Nix/Home Manager."
+    echo ""
+    echo "Please add this configuration to your Home Manager config:"
+    echo ""
+    echo "-----------------------------------------------------------"
+    cat <<'EOF'
+  programs.claude-code = {
+    settings = {
+      hooks = {
+        PreToolUse = "${config.home.homeDirectory}/.claude/hooks/guardrail.py";
+      };
+      env = {
+        GUARDRAILS_POLICY_PATH = "${config.home.homeDirectory}/.claude/hooks/policy.yaml";
+        GUARDRAILS_VERBOSE = "0";
+      };
+    };
+  };
+EOF
+    echo "-----------------------------------------------------------"
+    echo ""
+    echo "Or add to your existing Claude settings:"
+    echo ""
+    cat <<EOF
+  "hooks": {
+    "PreToolUse": "${GUARDRAIL_DEST}"
+  },
+  "env": {
+    "GUARDRAILS_POLICY_PATH": "${POLICY_DEST}",
+    "GUARDRAILS_VERBOSE": "0"
+  }
+EOF
+    echo ""
+    echo "After updating your config, rebuild with: home-manager switch"
+
+elif [ ! -f "$HOOKS_FILE" ]; then
     # Create new settings file
     echo "Creating new settings.json..."
     cat > "$HOOKS_FILE" <<EOF
@@ -80,7 +126,20 @@ else
     echo "Updating existing settings.json..."
 
     # Use Python to update JSON (more reliable than jq)
-    python3 <<EOF
+    python3 <<EOF || {
+        echo ""
+        echo "⚠️  Could not automatically update settings.json"
+        echo "Please manually add this to ${HOOKS_FILE}:"
+        echo ""
+        echo '  "hooks": {'
+        echo "    \"PreToolUse\": \"${GUARDRAIL_DEST}\""
+        echo '  },'
+        echo '  "env": {'
+        echo "    \"GUARDRAILS_POLICY_PATH\": \"${POLICY_DEST}\","
+        echo '    "GUARDRAILS_VERBOSE": "0"'
+        echo '  }'
+        exit 0
+    }
 import json
 import sys
 
@@ -110,24 +169,29 @@ EOF
 fi
 
 echo ""
-echo "✓ Guardrails installed successfully!"
+echo "✓ Guardrails files installed successfully!"
 echo ""
 echo "Files:"
 echo "  Hook: ${GUARDRAIL_DEST}"
 echo "  Policy: ${POLICY_DEST}"
-echo "  Settings: ${HOOKS_FILE}"
+if [ "$IS_NIX_MANAGED" = false ]; then
+    echo "  Settings: ${HOOKS_FILE}"
+fi
 echo ""
-echo "Environment variables set:"
+echo "Environment variables:"
 echo "  GUARDRAILS_POLICY_PATH=${POLICY_DEST}"
-echo "  GUARDRAILS_VERBOSE=0 (set to 1 in settings.json to enable verbose logging)"
+echo "  GUARDRAILS_VERBOSE=0 (set to 1 to enable verbose logging)"
 echo ""
 echo "To customize rules, edit: ${POLICY_DEST}"
 echo ""
-echo "Next steps:"
-echo "1. Review policy.yaml and adjust rules as needed"
-echo "2. Restart Claude Code for changes to take effect"
-echo "3. Set GUARDRAILS_VERBOSE=1 in settings.json if you want to see decision logs"
-echo ""
-echo "To uninstall, run:"
-echo "  rm ${GUARDRAIL_DEST} ${POLICY_DEST}"
-echo "  and remove the PreToolUse hook from ${HOOKS_FILE}"
+if [ "$IS_NIX_MANAGED" = false ]; then
+    echo "Next steps:"
+    echo "1. Review policy.yaml and adjust rules as needed"
+    echo "2. Restart Claude Code for changes to take effect"
+else
+    echo "Next steps:"
+    echo "1. Add the configuration shown above to your Home Manager config"
+    echo "2. Run: home-manager switch"
+    echo "3. Review policy.yaml and adjust rules as needed: ${POLICY_DEST}"
+    echo "4. Restart Claude Code"
+fi

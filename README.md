@@ -87,6 +87,28 @@ Both installers will:
 
 Then restart Claude Code.
 
+### Nix/Home Manager Support
+
+If your `settings.json` is managed by Nix/Home Manager, the installer will detect this and provide the appropriate configuration snippet. Add this to your Home Manager config:
+
+```nix
+programs.claude-code = {
+  settings = {
+    hooks = {
+      PreToolUse = "${config.home.homeDirectory}/.claude/hooks/guardrail.py";
+    };
+    env = {
+      GUARDRAILS_POLICY_PATH = "${config.home.homeDirectory}/.claude/hooks/policy.yaml";
+      GUARDRAILS_VERBOSE = "0";
+    };
+  };
+};
+```
+
+After adding, rebuild with `home-manager switch` and restart Claude Code.
+
+**Note**: The `.claude` directory is automatically excluded from dotfiles protection, even if it's under your dotfiles root.
+
 ## Behavior
 
 On each tool call, the hook will:

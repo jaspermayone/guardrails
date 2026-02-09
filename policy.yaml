@@ -18,6 +18,7 @@ dotfiles_root: "/Users/jsp/dev/dots"
 
 # Allowed subpaths under dotfiles (when explicitly working on them)
 # Add specific paths here when actively working on dotfiles modules
+# NOTE: .claude directory is automatically excluded even if under dotfiles
 dotfiles_allowlist: []
 
 # Dangerous shell command patterns to block

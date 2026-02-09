@@ -84,6 +84,14 @@ def is_dotfiles_path(path: str, policy: Dict[str, Any]) -> bool:
     path_obj = Path(path).resolve()
     dotfiles_obj = Path(dotfiles_root).resolve()
 
+    # Always allow access to .claude directory (even if under dotfiles)
+    claude_dir = Path.home() / ".claude"
+    try:
+        path_obj.relative_to(claude_dir)
+        return False  # Under .claude, always allow
+    except ValueError:
+        pass  # Not under .claude, continue checking
+
     # Check if path is under dotfiles root
     try:
         path_obj.relative_to(dotfiles_obj)
