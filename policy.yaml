@@ -1,0 +1,64 @@
+# Local guardrails policy configuration
+
+# Secret file patterns to block
+secret_patterns:
+  - "*.env"
+  - ".env"
+  - ".env.*"
+  - "secrets.*"
+  - "*.age"
+  - "**/secrets/**"
+  - "**/.env"
+  - "**/.env.*"
+  - "**/secrets.*"
+  - "**/*.age"
+
+# Dotfiles root (protected by default)
+dotfiles_root: "/Users/jsp/dev/dots"
+
+# Allowed subpaths under dotfiles (when explicitly working on them)
+# Add specific paths here when actively working on dotfiles modules
+dotfiles_allowlist: []
+
+# Dangerous shell command patterns to block
+dangerous_patterns:
+  - "rm -rf /"
+  - "rm -rf ~"
+  - "rm -rf $HOME"
+  - "sudo rm -rf /"
+  - "> /dev/sda"
+  - "dd if=/dev/zero"
+  - "mkfs"
+  - "chmod -R 777 /"
+  - "chown -R"
+
+# Safe patterns that override dangerous patterns
+safe_patterns:
+  - "rm -rf node_modules"
+  - "rm -rf dist"
+  - "rm -rf build"
+  - "rm -rf .next"
+  - "rm -rf coverage"
+  - "rm -rf target"
+  - "rm -rf out"
+  - "rm -rf .cache"
+  - "rm -rf tmp"
+  - "rm -rf temp"
+
+# Git commands that modify history/remotes (read-only is OK)
+blocked_git_commands:
+  - "commit"
+  - "push"
+  - "rebase"
+  - "merge"
+  - "cherry-pick"
+  - "reset --hard"
+  - "clean -f"
+  - "push --force"
+  - "force-push"
+
+# Blocked environment variable commands
+blocked_env_commands:
+  - "printenv"
+  - "env"
+  - "export -p"
